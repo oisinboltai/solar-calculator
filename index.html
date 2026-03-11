@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SolarCalc — Energy Savings Estimator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sun: #F5A623;
+      --sun-light: #FFD97D;
+      --sun-dark: #C07A00;
+      --bg: #0A0D0F;
+      --surface: #111518;
+      --card: #161B1F;
+      --border: #242C32;
+      --text: #E8EDF0;
+      --muted: #6B7880;
+      --green: #3DDC97;
+      --green-dim: #1A4A35;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* BACKGROUND */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px; right: -200px;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(245,166,35,0.08) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* HEADER */
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 48px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-sun {
+      width: 32px; height: 32px;
+      background: var(--sun);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(245,166,35,0.5);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(245,166,35,0.5); }
+      50% { box-shadow: 0 0 40px rgba(245,166,35,0.8); }
+    }
+
+    .badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+    }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+
+    .hero-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--sun);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--sun);
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 420px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* MAIN LAYOUT */
+    .main {
+      position: relative;
+      z-index: 10;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; }
+      header { padding: 20px 24px; }
+    }
+
+    /* CARD */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .card-title {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* INPUTS */
+    .field {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .label-hint {
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--sun);
+      box-shadow: 0 0 10px rgba(245,166,35,0.5);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 18px rgba(245,166,35,0.8);
+    }
+
+    .range-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: var(--sun);
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus { border-color: var(--sun); }
+
+    /* RESULTS */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .result-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      transition: border-color 0.3s;
+    }
+
+    .result-item.highlight {
+      border-color: var(--green-dim);
+      background: rgba(61, 220, 151, 0.04);
+    }
+
+    .result-item.big {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(245,166,35,0.08), rgba(245,166,35,0.03));
+      border-color: rgba(245,166,35,0.3);
+    }
+
+    .result-label {
+      font-size: 0.68rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .result-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.9rem;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .result-value.sun { color: var(--sun); font-size: 2.4rem; }
+    .result-value.green { color: var(--green); }
+
+    .result-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* PAYBACK BAR */
+    .payback-section {
+      margin-top: 20px;
+    }
+
+    .payback-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .bar-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--sun-dark), var(--sun), var(--sun-light));
+      border-radius: 8px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* CO2 SECTION */
+    .co2-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(61, 220, 151, 0.04);
+      border: 1px solid var(--green-dim);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .co2-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .co2-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .co2-text strong {
+      color: var(--green);
+      font-size: 1rem;
+    }
+
+    /* PANEL VISUAL */
+    .panel-visual {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .panel-cell {
+      aspect-ratio: 1.4;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .panel-cell.active {
+      background: linear-gradient(135deg, var(--sun-dark), var(--sun));
+      border-color: var(--sun);
+      box-shadow: 0 0 8px rgba(245,166,35,0.3);
+    }
+
+    /* DISCLAIMER */
+    .disclaimer {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 0 24px 40px;
+      position: relative;
+      z-index: 10;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-sun"></div>
+    SolarCalc
+  </div>
+  <span class="badge">Savings Estimator v1.0</span>
+</header>
+
+<div class="hero">
+  <p class="hero-eyebrow">Free Solar Estimator</p>
+  <h1>How much could you<br/>save going <em>solar?</em></h1>
+  <p class="hero-sub">Enter your details below and get an instant estimate of your potential savings and payback period.</p>
+</div>
+
+<div class="main">
+
+  <!-- INPUTS -->
+  <div class="card">
+    <p class="card-title">Your Details</p>
+
+    <div class="field">
+      <label>
+        Monthly electricity bill
+        <span class="label-hint">€ / month</span>
+      </label>
+      <div class="range-val" id="billVal">€150</div>
+      <input type="range" id="bill" min="50" max="500" value="150" step="10" oninput="calc()"/>
+    </div>
+
+    <div class="field">
+      <label>
+        Roof size available
+        <span class="label-hint">m²</span>
+      </label>
+      <div class="range-val" id="roofVal">40 m²</div>
+      <input type="range" id="roof" min="10" max="120" value="40" step="5" oninput="calc()"/>
+    </div>
+
+    <div class="field">
+      <label>
+        Location / sunlight hours
+        <span class="label-hint">avg peak hours/day</span>
+      </label>
+      <select id="location" onchange="calc()">
+        <option value="3.5">Northern Germany / UK (3.5h)</option>
+        <option value="4.2" selected>Central Europe (4.2h)</option>
+        <option value="5.0">Southern Germany / Austria (5.0h)</option>
+        <option value="5.8">Spain / Italy / Portugal (5.8h)</option>
+        <option value="6.5">Middle East / North Africa (6.5h)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>
+        Electricity tariff
+        <span class="label-hint">€ / kWh</span>
+      </label>
+      <div class="range-val" id="tariffVal">€0.30</div>
+      <input type="range" id="tariff" min="0.10" max="0.60" value="0.30" step="0.01" oninput="calc()"/>
+    </div>
+
+    <div class="field">
+      <label>
+        Self-consumption rate
+        <span class="label-hint">% used directly</span>
+      </label>
+      <div class="range-val" id="selfVal">70%</div>
+      <input type="range" id="self" min="30" max="95" value="70" step="5" oninput="calc()"/>
+    </div>
+
+    <!-- PANEL VISUAL -->
+    <div class="panel-visual" id="panelGrid"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card">
+    <p class="card-title">Your Estimate</p>
+
+    <div class="results-grid">
+      <div class="result-item big">
+        <div class="result-label">Annual Savings</div>
+        <div class="result-value sun" id="annualSavings">€—</div>
+        <div class="result-sub" id="monthlySavings">—/month</div>
+      </div>
+      <div class="result-item">
+        <div class="result-label">System Size</div>
+        <div class="result-value" id="systemSize">— kWp</div>
+        <div class="result-sub" id="panelCount">— panels</div>
+      </div>
+      <div class="result-item">
+        <div class="result-label">Annual Output</div>
+        <div class="result-value" id="annualOutput">— kWh</div>
+        <div class="result-sub">per year</div>
+      </div>
+      <div class="result-item highlight">
+        <div class="result-label">Est. System Cost</div>
+        <div class="result-value green" id="systemCost">€—</div>
+        <div class="result-sub">installed</div>
+      </div>
+      <div class="result-item highlight">
+        <div class="result-label">Payback Period</div>
+        <div class="result-value green" id="payback">— yrs</div>
+        <div class="result-sub">approximate</div>
+      </div>
+    </div>
+
+    <div class="payback-section">
+      <div class="payback-label">
+        <span>Payback timeline</span>
+        <span id="paybackPct">—</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="paybackBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="co2-section">
+      <div class="co2-icon">🌱</div>
+      <div class="co2-text">
+        Your system could offset <strong id="co2Val">— kg</strong> of CO₂ per year — equivalent to planting <strong id="treesVal">— trees</strong> annually.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="disclaimer">
+  Estimates are indicative only. System output varies based on panel orientation, shading, local conditions, and installer pricing. Always obtain quotes from certified installers.
+</p>
+
+<script>
+  function calc() {
+    const bill = +document.getElementById('bill').value;
+    const roof = +document.getElementById('roof').value;
+    const sunHours = +document.getElementById('location').value;
+    const tariff = +document.getElementById('tariff').value;
+    const selfPct = +document.getElementById('self').value / 100;
+
+    // Update display values
+    document.getElementById('billVal').textContent = `€${bill}`;
+    document.getElementById('roofVal').textContent = `${roof} m²`;
+    document.getElementById('tariffVal').textContent = `€${tariff.toFixed(2)}`;
+    document.getElementById('selfVal').textContent = `${Math.round(selfPct * 100)}%`;
+
+    // Calcs
+    const panelW = 0.4; // kWp per panel
+    const m2PerPanel = 1.7;
+    const numPanels = Math.floor(roof / m2PerPanel);
+    const systemKwp = +(numPanels * panelW).toFixed(1);
+
+    const annualKwh = Math.round(systemKwp * sunHours * 365 * 0.85); // 0.85 system efficiency
+
+    const annualBillKwh = (bill * 12) / tariff;
+    const usedKwh = Math.min(annualKwh * selfPct, annualBillKwh);
+    const exportKwh = annualKwh - usedKwh;
+    const exportRate = tariff * 0.3; // feed-in ~30% of tariff
+
+    const savings = Math.round(usedKwh * tariff + exportKwh * exportRate);
+    const monthly = Math.round(savings / 12);
+
+    const costPerKwp = 1600; // EUR/kWp installed
+    const systemCost = Math.round(systemKwp * costPerKwp);
+    const paybackYears = savings > 0 ? (systemCost / savings).toFixed(1) : '—';
+
+    const co2 = Math.round(annualKwh * 0.233); // kg CO2 per kWh (EU avg)
+    const trees = Math.round(co2 / 22); // ~22kg CO2 per tree per year
+
+    // Render
+    document.getElementById('annualSavings').textContent = `€${savings.toLocaleString()}`;
+    document.getElementById('monthlySavings').textContent = `~€${monthly}/month`;
+    document.getElementById('systemSize').textContent = `${systemKwp} kWp`;
+    document.getElementById('panelCount').textContent = `${numPanels} panels`;
+    document.getElementById('annualOutput').textContent = `${annualKwh.toLocaleString()} kWh`;
+    document.getElementById('systemCost').textContent = `€${systemCost.toLocaleString()}`;
+    document.getElementById('payback').textContent = `${paybackYears} yrs`;
+    document.getElementById('co2Val').textContent = `${co2.toLocaleString()} kg`;
+    document.getElementById('treesVal').textContent = trees;
+
+    // Payback bar (max 20 years = 100%)
+    const pct = Math.min((paybackYears / 20) * 100, 100);
+    document.getElementById('paybackBar').style.width = pct + '%';
+    document.getElementById('paybackPct').textContent = `${paybackYears} of 20 year lifespan`;
+
+    // Panel grid
+    renderPanels(numPanels);
+  }
+
+  function renderPanels(count) {
+    const grid = document.getElementById('panelGrid');
+    const total = 16;
+    grid.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'panel-cell' + (i < Math.min(count, total) ? ' active' : '');
+      grid.appendChild(cell);
+    }
+  }
+
+  calc();
+</script>
+</body>
+</html>
